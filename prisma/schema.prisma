@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../app/generated/prisma"
@@ -14,19 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// generator client {
-//   provider        = "prisma-client-js"
-//   previewFeatures = ["filterJson", "fullTextSearch"]
-// }
-
-// datasource db {
-//   provider = "postgresql"
-//   url      = env("DATABASE_URL")
-// }
-
-// ───────────────────────────────────────────────────────────────────────────────
-// ENUMS
-// ───────────────────────────────────────────────────────────────────────────────
+// ENUMS (unchanged)
 enum Role {
   BUYER
   SELLER
@@ -91,22 +73,23 @@ enum ShippingMethod {
   SAME_DAY
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
-// MODELS
-// ───────────────────────────────────────────────────────────────────────────────
+// New enum for image types
+enum ImageType {
+  PRIMARY
+  PROMOTIONAL
+}
 
 model User {
   id        String   @id @default(cuid())
   clerkId   String   @unique
   email     String   @unique @db.VarChar(255)
-  firstName String
-  lastName  String
+  firstName String?
+  lastName  String?
   phone     String?  @db.VarChar(20)
   role      Role     @default(BUYER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // relations
   addresses      Address[]       @relation("UserAddresses")
   paymentMethods PaymentMethod[] @relation("UserPayments")
   cartItems      CartItem[]      @relation("UserCartItems")
@@ -143,6 +126,21 @@ model Address {
   @@map("addresses")
 }
 
+model CategorySpecification {
+  id          String   @id @default(cuid())
+  categoryId  String
+  key         String
+  label       String
+  placeholder String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, key])
+  @@map("category_specifications")
+}
+
 model Category {
   id          String   @id @default(cuid())
   name        String   @unique
@@ -153,9 +151,10 @@ model Category {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children Category[] @relation("CategoryHierarchy")
-  products Product[]
+  parent                Category?               @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children              Category[]              @relation("CategoryHierarchy")
+  products              Product[]
+  categorySpecification CategorySpecification[]
 
   @@index([slug])
   @@map("categories")
@@ -203,12 +202,13 @@ model ProductVariant {
   sku        String   @unique
   price      Decimal  @db.Money
   stock      Int      @default(0)
-  attributes Json? // e.g. { size: "M", color: "Red" }
+  attributes Json? // Retains comparePrice, costPrice, trackQuantity, weight, dimensions, shippingClass
   isDefault  Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  product         Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  specifications  ProductSpecification[]
+  product         Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
   cartItems       CartItem[]
   orderItems      OrderItem[]
   SellerOrderItem SellerOrderItem[]
@@ -217,13 +217,30 @@ model ProductVariant {
   @@map("product_variants")
 }
 
+model ProductSpecification {
+  id        String   @id @default(cuid())
+  variantId String
+  key       String // e.g., "ram", "size"
+  value     String // e.g., "8GB", "M"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, key]) // Ensure no duplicate keys per variant
+  @@index([variantId])
+  @@map("product_specifications")
+}
+
+// Modified ProductImage model
 model ProductImage {
-  id        String  @id @default(cuid())
+  id        String    @id @default(cuid())
   variantId String?
   productId String
   url       String
   altText   String?
-  sortOrder Int     @default(0)
+  sortOrder Int       @default(0)
+  type      ImageType @default(PRIMARY) // New field to distinguish image types
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
