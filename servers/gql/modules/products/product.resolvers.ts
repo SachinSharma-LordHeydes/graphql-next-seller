@@ -16,27 +16,46 @@ export const productResolvers = {
           variants: true,
           images: true,
           reviews: true,
-          Category: true,
+          Category: {
+            include: {
+              children: true,
+              parent: true,
+            },
+          },
           Brand: true,
-          WishlistItem:true
+          WishlistItem: true,
         },
       });
     },
-    //   getProduct: async (
-    //     _: any,
-    //     { productId }: { productId: string },
-    //     ctx: GraphQLContext
-    //   ) => {
-    //     requireAuth(ctx);
+    getProduct: async (
+      _: any,
+      { productId }: { productId: string },
+      ctx: GraphQLContext
+    ) => {
+      requireAuth(ctx);
 
-    //     if (!productId) throw new Error("Product id is required");
+      if (!productId) throw new Error("Product id is required");
 
-    //     return prisma.product.findUnique({
-    //       where:{
-    //         id:productId
-    //       }
-    //     })
-    //   },
+      return prisma.product.findUnique({
+        where: {
+          id: productId,
+        },
+        include: {
+          seller: true,
+          variants: true,
+          images: true,
+          reviews: true,
+          Category: {
+            include: {
+              children: true,
+              parent: true,
+            },
+          },
+          Brand: true,
+          WishlistItem: true,
+        },
+      });
+    },
   },
   Mutation: {
     addProduct: async (

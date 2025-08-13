@@ -5,6 +5,7 @@ export const GET_PRODUCT_CATEGORIES = gql`
     categories {
       id
       name
+
       children {
         id
         name
@@ -26,25 +27,26 @@ export const GET_PRODUCT_CATEGORIES = gql`
 `;
 
 export const GET_PRODUCT = gql`
-  query GetProduct {
-    getProduct {
+  query GetProduct($productId: ID!) {
+    getProduct(productId: $productId) {
       id
       name
-      children {
-        id
-        name
-        categorySpecification {
-          id
+      brandId
+      categoryId
+      description
+      variants {
+        sku
+        price
+        stock
+        specifications {
           key
-          label
-          placeholder
+          value
         }
       }
-      categorySpecification {
-        id
-        key
-        label
-        placeholder
+      images {
+        url
+        altText
+        type
       }
     }
   }
@@ -55,6 +57,10 @@ export const GET_PRODUCTS = gql`
     getProducts {
       id
       name
+      slug
+      images {
+        url
+      }
       status
       variants {
         sku
@@ -62,7 +68,10 @@ export const GET_PRODUCTS = gql`
         stock
       }
       Category {
-        name
+        parent {
+          name
+          id
+        }
       }
     }
   }

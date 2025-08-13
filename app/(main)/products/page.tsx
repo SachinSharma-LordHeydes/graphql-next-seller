@@ -154,24 +154,38 @@ export default function ProductsPage() {
 
   console.log("products-->", productsData);
 
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = productsData?.getProducts.filter((product) => {
+    // Search filter
     const matchesSearch =
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || product.status === statusFilter;
+      (product.variants?.[0]?.sku || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+
+    // Status filter
+    let matchesStatus = true;
+    if (statusFilter !== "all") {
+      if (statusFilter === "active") {
+        matchesStatus = product.status === "ACTIVE";
+      } else if (statusFilter === "draft") {
+         matchesStatus = product.status === "DRAFT";
+      } else if (statusFilter === "out_of_stock") {
+        matchesStatus = product.variants?.[0]?.stock === 0;
+      } else if (statusFilter === "low_stock") {
+        matchesStatus =
+          product.variants?.[0]?.stock > 0 && product.variants?.[0]?.stock <= 5;
+      } else {
+        matchesStatus = product.status === statusFilter.toUpperCase();
+      }
+    }
+
+    // Category filter
     const matchesCategory =
-      categoryFilter === "all" || product.category === categoryFilter;
+      categoryFilter === "all" ||
+      product.Category?.parent?.name === categoryFilter;
 
     return matchesSearch && matchesStatus && matchesCategory;
   });
-
-  console.log(
-    "productsData.getProducts.length",
-    productsData?.getProducts.filter((product) =>
-      product.variants?.filter((variant) => variant.stock < 5)
-    ).length
-  );
 
   return (
     <div className="space-y-6">
@@ -306,7 +320,7 @@ export default function ProductsPage() {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="out_of_stock">Out of Stock</SelectItem>
                 <SelectItem value="low_stock">Low Stock</SelectItem>
               </SelectContent>
@@ -318,11 +332,9 @@ export default function ProductsPage() {
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
                 {getCategoryData?.categories?.map((category, index) => (
-                  
-                  <div>
-
-                     <SelectItem value={category.id} key={index}>{category?.name}</SelectItem>
-                  </div>
+                  <SelectItem value={category.name} key={index}>
+                    {category.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -344,20 +356,20 @@ export default function ProductsPage() {
                       Stock
                     </TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="hidden xl:table-cell">
+                    {/* <TableHead className="hidden xl:table-cell">
                       Sales
-                    </TableHead>
+                    </TableHead> */}
                     <TableHead className="w-[70px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProducts.map((product) => (
-                    <TableRow key={product.id}>
+                  {filteredProducts?.map((product) => (
+                    <TableRow key={product?.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 rounded-md">
                             <AvatarImage
-                              src={product.image || "/placeholder.svg"}
+                              src={product.images[0]?.url || "/placeholder.svg"}
                               alt={product.name}
                             />
                             <AvatarFallback className="rounded-md">
@@ -369,40 +381,42 @@ export default function ProductsPage() {
                               {product.name}
                             </div>
                             <div className="text-sm text-muted-foreground sm:hidden">
-                              {product.sku}
+                              {product.variants[0]?.sku}
                             </div>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell font-mono text-sm">
-                        {product.sku}
+                        {product.variants[0].sku}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <Badge variant="outline">{product.category}</Badge>
+                        <Badge variant="outline">
+                          {product.Category?.parent.name}
+                        </Badge>
                       </TableCell>
                       <TableCell className="font-medium">
-                        ${product.price.toFixed(2)}
+                        ${product.variants[0].price}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         <span
                           className={
-                            product.stock <= 10
+                            product.variants.stock <= 10
                               ? "text-orange-600 font-medium"
                               : ""
                           }
                         >
-                          {product.stock}
+                          {product.variants[0].stock}
                         </span>
                       </TableCell>
                       <TableCell>{getStatusBadge(product.status)}</TableCell>
-                      <TableCell className="hidden xl:table-cell">
+                      {/* <TableCell className="hidden xl:table-cell">
                         <div className="text-sm">
                           <div>{product.sales} sold</div>
                           <div className="text-muted-foreground">
                             ${product.revenue.toLocaleString()}
                           </div>
                         </div>
-                      </TableCell>
+                      </TableCell> */}
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -438,7 +452,7 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          {filteredProducts.length === 0 && (
+          {filteredProducts?.length === 0 && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">
                 No products found matching your criteria.

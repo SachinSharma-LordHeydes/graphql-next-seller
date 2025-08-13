@@ -7,3 +7,11 @@ export const ADD_PRODUCT = gql`
     }
   }
 `;
+
+export const UPDATE_PRODUCT = gql`
+  mutation AddProduct($input: CreateProductInput!) {
+    addProduct(input: $input) {
+      id
+    }
+  }
+`;
