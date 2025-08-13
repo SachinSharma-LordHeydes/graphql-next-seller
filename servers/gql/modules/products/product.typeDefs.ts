@@ -41,7 +41,12 @@ export const productTypeDefs = gql`
     promotionalImages: [CreateProductImageInput!]!
   }
 
+  type Query {
+    getProducts: [Product!]!
+    getProduct(productId: ID!): Product!
+  }
+
   type Mutation {
-    addProduct(input: CreateProductInput!): Product! # Changed from createProduct to addProduct
+    addProduct(input: CreateProductInput!): Product!
   }
 `;

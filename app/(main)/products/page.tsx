@@ -1,14 +1,19 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Plus, Search, MoreHorizontal, Edit, Eye, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  GET_PRODUCT_CATEGORIES,
+  GET_PRODUCTS,
+} from "@/client/product/product.queries";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,8 +21,27 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useQuery } from "@apollo/client";
+import { Edit, Eye, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
 
 // Mock data
 const products = [
@@ -81,50 +105,73 @@ const products = [
     sales: 67,
     revenue: 30149.33,
   },
-]
+];
 
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "active":
       return (
-        <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
+        <Badge
+          variant="default"
+          className="bg-green-100 text-green-800 hover:bg-green-100"
+        >
           Active
         </Badge>
-      )
+      );
     case "inactive":
-      return <Badge variant="secondary">Inactive</Badge>
+      return <Badge variant="secondary">Inactive</Badge>;
     case "out_of_stock":
-      return <Badge variant="destructive">Out of Stock</Badge>
+      return <Badge variant="destructive">Out of Stock</Badge>;
     case "low_stock":
       return (
         <Badge variant="outline" className="border-orange-200 text-orange-800">
           Low Stock
         </Badge>
-      )
+      );
     default:
-      return <Badge variant="secondary">{status}</Badge>
+      return <Badge variant="secondary">{status}</Badge>;
   }
-}
+};
 
 export default function ProductsPage() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [categoryFilter, setCategoryFilter] = useState("all")
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+
+  const {
+    data: productsData,
+    loading: productsDataLoading,
+    error: productsDataError,
+  } = useQuery(GET_PRODUCTS);
+
+  const {
+    data: getCategoryData,
+    loading: getCategoryLoading,
+    error: getCategoryError,
+  } = useQuery(GET_PRODUCT_CATEGORIES);
+
+  console.log("ctegory data-->", getCategoryData);
+
+  console.log("products-->", productsData);
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || product.status === statusFilter
-    const matchesCategory = categoryFilter === "all" || product.category === categoryFilter
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" || product.status === statusFilter;
+    const matchesCategory =
+      categoryFilter === "all" || product.category === categoryFilter;
 
-    return matchesSearch && matchesStatus && matchesCategory
-  })
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
 
-  const totalProducts = products.length
-  const activeProducts = products.filter((p) => p.status === "active").length
-  const outOfStockProducts = products.filter((p) => p.status === "out_of_stock").length
-  const lowStockProducts = products.filter((p) => p.status === "low_stock").length
+  console.log(
+    "productsData.getProducts.length",
+    productsData?.getProducts.filter((product) =>
+      product.variants?.filter((variant) => variant.stock < 5)
+    ).length
+  );
 
   return (
     <div className="space-y-6">
@@ -132,7 +179,9 @@ export default function ProductsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-          <p className="text-muted-foreground">Manage your product inventory and listings</p>
+          <p className="text-muted-foreground">
+            Manage your product inventory and listings
+          </p>
         </div>
         <Link href="/products/add">
           <Button>
@@ -146,19 +195,45 @@ export default function ProductsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Products
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalProducts}</div>
-            <p className="text-xs text-muted-foreground">All products in inventory</p>
+            <div className="text-2xl font-bold">
+              {/* {totalProducts} */}
+              {productsDataLoading ? (
+                <div className="h-6 w-10 bg-gray-200 animate-pulse rounded mb-1" />
+              ) : (
+                <p className="">{productsData?.getProducts.length}</p>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              All products in inventory
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Products</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Products
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{activeProducts}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {/* {activeProducts} */}
+              {productsDataLoading ? (
+                <div className="h-6 w-10 bg-gray-200 animate-pulse rounded mb-1" />
+              ) : (
+                <p className="">
+                  {
+                    productsData?.getProducts.filter(
+                      (data) => data.status === "ACTIVE"
+                    ).length
+                  }
+                </p>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">Currently available</p>
           </CardContent>
         </Card>
@@ -167,7 +242,20 @@ export default function ProductsPage() {
             <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{outOfStockProducts}</div>
+            <div className="text-2xl font-bold text-red-600">
+              {/* {outOfStockProducts} */}
+              {productsDataLoading ? (
+                <div className="h-6 w-10 bg-gray-200 animate-pulse rounded mb-1" />
+              ) : (
+                <p className="">
+                  {
+                    productsData?.getProducts.filter((product) =>
+                      product.variants?.some((variant) => variant.stock === 0)
+                    ).length
+                  }
+                </p>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">Need restocking</p>
           </CardContent>
         </Card>
@@ -176,7 +264,19 @@ export default function ProductsPage() {
             <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{lowStockProducts}</div>
+            <div className="text-2xl font-bold text-orange-600">
+              {productsDataLoading ? (
+                <div className="h-6 w-10 bg-gray-200 animate-pulse rounded mb-1" />
+              ) : (
+                <p className="">
+                  {
+                    productsData?.getProducts.filter((product) =>
+                      product.variants?.some((variant) => variant.stock <= 5)
+                    ).length
+                  }
+                </p>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">Running low</p>
           </CardContent>
         </Card>
@@ -217,10 +317,13 @@ export default function ProductsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="Electronics">Electronics</SelectItem>
-                <SelectItem value="Clothing">Clothing</SelectItem>
-                <SelectItem value="Furniture">Furniture</SelectItem>
-                <SelectItem value="Books">Books</SelectItem>
+                {getCategoryData?.categories?.map((category, index) => (
+                  
+                  <div>
+
+                     <SelectItem value={category.id} key={index}>{category?.name}</SelectItem>
+                  </div>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -233,11 +336,17 @@ export default function ProductsPage() {
                   <TableRow>
                     <TableHead className="w-[300px]">Product</TableHead>
                     <TableHead className="hidden sm:table-cell">SKU</TableHead>
-                    <TableHead className="hidden md:table-cell">Category</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Category
+                    </TableHead>
                     <TableHead>Price</TableHead>
-                    <TableHead className="hidden lg:table-cell">Stock</TableHead>
+                    <TableHead className="hidden lg:table-cell">
+                      Stock
+                    </TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="hidden xl:table-cell">Sales</TableHead>
+                    <TableHead className="hidden xl:table-cell">
+                      Sales
+                    </TableHead>
                     <TableHead className="w-[70px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -247,24 +356,41 @@ export default function ProductsPage() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 rounded-md">
-                            <AvatarImage src={product.image || "/placeholder.svg"} alt={product.name} />
+                            <AvatarImage
+                              src={product.image || "/placeholder.svg"}
+                              alt={product.name}
+                            />
                             <AvatarFallback className="rounded-md">
                               {product.name.substring(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
-                            <div className="font-medium truncate">{product.name}</div>
-                            <div className="text-sm text-muted-foreground sm:hidden">{product.sku}</div>
+                            <div className="font-medium truncate">
+                              {product.name}
+                            </div>
+                            <div className="text-sm text-muted-foreground sm:hidden">
+                              {product.sku}
+                            </div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell font-mono text-sm">{product.sku}</TableCell>
+                      <TableCell className="hidden sm:table-cell font-mono text-sm">
+                        {product.sku}
+                      </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <Badge variant="outline">{product.category}</Badge>
                       </TableCell>
-                      <TableCell className="font-medium">${product.price.toFixed(2)}</TableCell>
+                      <TableCell className="font-medium">
+                        ${product.price.toFixed(2)}
+                      </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        <span className={product.stock <= 10 ? "text-orange-600 font-medium" : ""}>
+                        <span
+                          className={
+                            product.stock <= 10
+                              ? "text-orange-600 font-medium"
+                              : ""
+                          }
+                        >
                           {product.stock}
                         </span>
                       </TableCell>
@@ -272,7 +398,9 @@ export default function ProductsPage() {
                       <TableCell className="hidden xl:table-cell">
                         <div className="text-sm">
                           <div>{product.sales} sold</div>
-                          <div className="text-muted-foreground">${product.revenue.toLocaleString()}</div>
+                          <div className="text-muted-foreground">
+                            ${product.revenue.toLocaleString()}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -312,11 +440,13 @@ export default function ProductsPage() {
 
           {filteredProducts.length === 0 && (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">No products found matching your criteria.</p>
+              <p className="text-muted-foreground">
+                No products found matching your criteria.
+              </p>
             </div>
           )}
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

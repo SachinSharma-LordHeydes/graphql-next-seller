@@ -42,7 +42,6 @@ export default function AddProductPage() {
     error: getCategoryError,
   } = useQuery(GET_PRODUCT_CATEGORIES);
 
-  console.log("getCategory Data-->", getCategoryData);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState({});
