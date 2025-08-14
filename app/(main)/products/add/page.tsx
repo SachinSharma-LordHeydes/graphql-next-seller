@@ -1,7 +1,7 @@
 "use client";
 
 import { ADD_PRODUCT } from "@/client/product/product.mutations";
-import { GET_PRODUCT_CATEGORIES } from "@/client/product/product.queries";
+import { GET_PRODUCT_CATEGORIES, GET_PRODUCTS } from "@/client/product/product.queries";
 import { FormNavigation } from "@/components/product/FormNavigation";
 import { ProgressStepper } from "@/components/product/ProgressStepper";
 import { BasicDetailsStep } from "@/components/product/steps/BasicDetailsStep";
@@ -34,14 +34,19 @@ const steps = [
 
 export default function AddProductPage() {
   const [addProduct, { loading: addProductLoading, error: addProductError }] =
-    useMutation(ADD_PRODUCT);
+    useMutation(ADD_PRODUCT, {
+      refetchQueries: [{ query: GET_PRODUCTS }],
+      awaitRefetchQueries: true,
+    });
 
   const {
     data: getCategoryData,
     loading: getCategoryLoading,
     error: getCategoryError,
-  } = useQuery(GET_PRODUCT_CATEGORIES);
-
+  } = useQuery(GET_PRODUCT_CATEGORIES, {
+    errorPolicy: "all",
+    notifyOnNetworkStatusChange: false,
+  });
 
   const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState({});
@@ -249,9 +254,13 @@ export default function AddProductPage() {
 
     switch (currentStep) {
       case 1:
-        return <BasicDetailsStep {...stepProps} categoriesData={categoriesData} />;
+        return (
+          <BasicDetailsStep {...stepProps} categoriesData={categoriesData} />
+        );
       case 2:
-        return <SpecificationsStep {...stepProps} categoriesData={categoriesData} />;
+        return (
+          <SpecificationsStep {...stepProps} categoriesData={categoriesData} />
+        );
       case 3:
         return <PricingStep {...stepProps} />;
       case 4:

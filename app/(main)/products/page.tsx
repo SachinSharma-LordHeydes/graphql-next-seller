@@ -1,5 +1,6 @@
 "use client";
 
+import { DELETE_PRODUCT } from "@/client/product/product.mutations";
 import {
   GET_PRODUCT_CATEGORIES,
   GET_PRODUCTS,
@@ -38,10 +39,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import { Edit, Eye, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import React, { useState } from "react";
 
 // Mock data
 const products = [
@@ -142,50 +143,105 @@ export default function ProductsPage() {
     data: productsData,
     loading: productsDataLoading,
     error: productsDataError,
-  } = useQuery(GET_PRODUCTS);
+  } = useQuery(GET_PRODUCTS, {
+    errorPolicy: "all",
+    notifyOnNetworkStatusChange: false,
+  });
+
+  const [
+    deleteProduct,
+    { loading: deleteProductLoading, error: deleteProductError },
+  ] = useMutation(DELETE_PRODUCT, {
+    refetchQueries: [{ query: GET_PRODUCTS }],
+    awaitRefetchQueries: true,
+  });
+
+  // console.log("product data-->",productsData)
 
   const {
     data: getCategoryData,
     loading: getCategoryLoading,
     error: getCategoryError,
-  } = useQuery(GET_PRODUCT_CATEGORIES);
+  } = useQuery(GET_PRODUCT_CATEGORIES, {
+    errorPolicy: "all",
+    notifyOnNetworkStatusChange: false,
+  });
 
-  console.log("ctegory data-->", getCategoryData);
+  React.useEffect(() => {
+    if (getCategoryData && !getCategoryLoading) {
+      console.log(
+        "Categories loaded:",
+        getCategoryData.categories?.length || 0
+      );
+    }
+  }, [getCategoryData, getCategoryLoading]);
 
-  console.log("products-->", productsData);
+  React.useEffect(() => {
+    if (productsData && !productsDataLoading) {
+      console.log("Products loaded:", productsData.getProducts?.length || 0);
+    }
+  }, [productsData, productsDataLoading]);
 
-  const filteredProducts = productsData?.getProducts.filter((product) => {
-    // Search filter
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (product.variants?.[0]?.sku || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-
-    // Status filter
-    let matchesStatus = true;
-    if (statusFilter !== "all") {
-      if (statusFilter === "active") {
-        matchesStatus = product.status === "ACTIVE";
-      } else if (statusFilter === "draft") {
-         matchesStatus = product.status === "DRAFT";
-      } else if (statusFilter === "out_of_stock") {
-        matchesStatus = product.variants?.[0]?.stock === 0;
-      } else if (statusFilter === "low_stock") {
-        matchesStatus =
-          product.variants?.[0]?.stock > 0 && product.variants?.[0]?.stock <= 5;
-      } else {
-        matchesStatus = product.status === statusFilter.toUpperCase();
-      }
+  // Add safety check for data existence
+  const filteredProducts = React.useMemo(() => {
+    if (!productsData?.getProducts || productsDataLoading) {
+      return [];
     }
 
-    // Category filter
-    const matchesCategory =
-      categoryFilter === "all" ||
-      product.Category?.parent?.name === categoryFilter;
+    return productsData.getProducts.filter((product) => {
+      // Search filter
+      const matchesSearch =
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.variants?.[0]?.sku || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
 
-    return matchesSearch && matchesStatus && matchesCategory;
-  });
+      // Status filter
+      let matchesStatus = true;
+      if (statusFilter !== "all") {
+        if (statusFilter === "active") {
+          matchesStatus = product.status === "ACTIVE";
+        } else if (statusFilter === "draft") {
+          matchesStatus = product.status === "DRAFT";
+        } else if (statusFilter === "out_of_stock") {
+          matchesStatus = product.variants?.[0]?.stock === 0;
+        } else if (statusFilter === "low_stock") {
+          matchesStatus =
+            product.variants?.[0]?.stock > 0 &&
+            product.variants?.[0]?.stock <= 10;
+        } else {
+          matchesStatus = product.status === statusFilter.toUpperCase();
+        }
+      }
+
+      // Category filter
+      const matchesCategory =
+        categoryFilter === "all" ||
+        product.Category?.parent?.name === categoryFilter;
+
+      return matchesSearch && matchesStatus && matchesCategory;
+    });
+  }, [
+    productsData,
+    productsDataLoading,
+    searchTerm,
+    statusFilter,
+    categoryFilter,
+  ]);
+
+  const handelDeleteProduct=async(id:string)=>{
+    console.log("deletigng product")
+    try {
+      await deleteProduct({
+        variables:{
+          productId:id
+        }
+      })
+      console.log("deleted successfully")
+    } catch (error) {
+      console.log("error-->",error)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -285,7 +341,7 @@ export default function ProductsPage() {
                 <p className="">
                   {
                     productsData?.getProducts.filter((product) =>
-                      product.variants?.some((variant) => variant.stock <= 5)
+                      product.variants?.some((variant) => variant.stock <= 10)
                     ).length
                   }
                 </p>
@@ -369,46 +425,55 @@ export default function ProductsPage() {
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 rounded-md">
                             <AvatarImage
-                              src={product.images[0]?.url || "/placeholder.svg"}
-                              alt={product.name}
+                              src={
+                                product.images?.[0]?.url || "/placeholder.svg"
+                              }
+                              alt={product.name || "Product"}
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder.svg";
+                              }}
                             />
                             <AvatarFallback className="rounded-md">
-                              {product.name.substring(0, 2).toUpperCase()}
+                              {(product.name || "PR")
+                                .substring(0, 2)
+                                .toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
                             <div className="font-medium truncate">
-                              {product.name}
+                              {product.name || "Unnamed Product"}
                             </div>
                             <div className="text-sm text-muted-foreground sm:hidden">
-                              {product.variants[0]?.sku}
+                              {product.variants?.[0]?.sku || "No SKU"}
                             </div>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell font-mono text-sm">
-                        {product.variants[0].sku}
+                        {product.variants?.[0]?.sku || "No SKU"}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <Badge variant="outline">
-                          {product.Category?.parent.name}
+                          {product.Category?.parent?.name || "No Category"}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">
-                        ${product.variants[0].price}
+                        ${product.variants?.[0]?.price || "0.00"}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         <span
                           className={
-                            product.variants.stock <= 10
+                            (product.variants?.[0]?.stock || 0) <= 10
                               ? "text-orange-600 font-medium"
                               : ""
                           }
                         >
-                          {product.variants[0].stock}
+                          {product.variants?.[0]?.stock || "0"}
                         </span>
                       </TableCell>
-                      <TableCell>{getStatusBadge(product.status)}</TableCell>
+                      <TableCell>
+                        {getStatusBadge(product.status || "INACTIVE")}
+                      </TableCell>
                       {/* <TableCell className="hidden xl:table-cell">
                         <div className="text-sm">
                           <div>{product.sales} sold</div>
@@ -438,7 +503,10 @@ export default function ProductsPage() {
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
+                            <DropdownMenuItem
+                              onClick={()=>handelDeleteProduct(product.id)}
+                              className="text-red-600"
+                            >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                             </DropdownMenuItem>

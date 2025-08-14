@@ -56,15 +56,20 @@ export default function EditProductPage({ params }: EditProductPageProps) {
     error: productError,
   } = useQuery(GET_PRODUCT, {
     variables: { productId: params.id },
+    errorPolicy: 'all',
+    notifyOnNetworkStatusChange: false,
   });
-
-  console.log("product data-->",productData)
 
   const {
     data: getCategoryData,
     loading: getCategoryLoading,
     error: getCategoryError,
-  } = useQuery(GET_PRODUCT_CATEGORIES);
+  } = useQuery(GET_PRODUCT_CATEGORIES, {
+    errorPolicy: 'all',
+    notifyOnNetworkStatusChange: false,
+  });
+
+  console.log("prosuct dara-->",productData)
 
   const [formData, setFormData] = useState<FormData>({
     title: "",
@@ -92,15 +97,15 @@ export default function EditProductPage({ params }: EditProductPageProps) {
 
   // Populate form data when product data is loaded
   useEffect(() => {
-    if (productData?.product) {
-      const product = productData?.getProduct;
+    if (productData?.getProduct) {
+      const product = productData.getProduct;
       const defaultVariant = product.variants?.find((v: any) => v.isDefault) || product.variants?.[0];
       
       setFormData({
         title: product.name || "",
         brandId: product.brandId || "",
-        categoryId: product.categoryId || "",
-        subcategory: product.categoryId || "", // Assuming categoryId is the leaf category
+        categoryId: product.Category.parent.id || "",
+        subcategory: product.Category.id || "", // Assuming categoryId is the leaf category
         description: product.description || "",
         features: product.features || [],
         specifications: defaultVariant?.specifications?.reduce((acc: any, spec: any) => {

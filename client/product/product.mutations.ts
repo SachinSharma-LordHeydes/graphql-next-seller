@@ -15,3 +15,11 @@ export const UPDATE_PRODUCT = gql`
     }
   }
 `;
+
+export const DELETE_PRODUCT = gql`
+  mutation DeleteProduct($productId: ID!) {
+    deleteProduct(productId: $productId) {
+      id
+    }
+  }
+`;

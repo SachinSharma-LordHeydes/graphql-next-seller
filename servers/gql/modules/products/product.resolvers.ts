@@ -1,6 +1,6 @@
 import { PrismaClient } from "@/app/generated/prisma";
 import { generateUniqueSlug } from "@/servers/utils/slugfy";
-import { requireAuth } from "../../auth/auth";
+import { requireAuth, requireSeller } from "../../auth/auth";
 import { GraphQLContext } from "../../context";
 
 const prisma = new PrismaClient();
@@ -25,6 +25,9 @@ export const productResolvers = {
           Brand: true,
           WishlistItem: true,
         },
+        orderBy: {
+          createdAt: "desc", // latest first
+        },
       });
     },
     getProduct: async (
@@ -42,7 +45,11 @@ export const productResolvers = {
         },
         include: {
           seller: true,
-          variants: true,
+          variants: {
+            include:{
+              specifications:true
+            }
+          },
           images: true,
           reviews: true,
           Category: {
@@ -160,6 +167,39 @@ export const productResolvers = {
       } catch (error: any) {
         console.log("error while creating product", error);
         throw new Error(`Failed to create product: ${error.message}`);
+      }
+    },
+    deleteProduct: async (
+      _: any,
+      { productId }: { productId: string },
+      ctx: GraphQLContext
+    ) => {
+      requireSeller(ctx);
+
+      if (!productId) {
+        throw new Error("Product ID is required");
+      }
+
+      // Ensure the product exists and belongs to the seller
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+      });
+
+      if (!product) {
+        throw new Error("Product not found");
+      }
+
+      if (product.sellerId !== ctx.user!.id) {
+        throw new Error("Unauthorized: You can only delete your own products");
+      }
+
+      try {
+        return await prisma.product.delete({
+          where: { id: productId },
+        });
+      } catch (error: any) {
+        console.error("Error deleting product:", error);
+        throw new Error(`Failed to delete product: ${error.message}`);
       }
     },
   },

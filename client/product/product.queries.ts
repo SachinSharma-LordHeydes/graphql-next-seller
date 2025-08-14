@@ -29,24 +29,32 @@ export const GET_PRODUCT_CATEGORIES = gql`
 export const GET_PRODUCT = gql`
   query GetProduct($productId: ID!) {
     getProduct(productId: $productId) {
+      Category {
+        name
+        id
+        parent {
+          id
+          name
+        }
+      }
       id
       name
-      brandId
-      categoryId
       description
+      images {
+        id
+        url
+        type
+        altText
+      }
       variants {
-        sku
         price
+        sku
+        productId
         stock
         specifications {
           key
           value
         }
-      }
-      images {
-        url
-        altText
-        type
       }
     }
   }
